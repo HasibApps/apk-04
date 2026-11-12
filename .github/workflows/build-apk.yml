@@ -1,0 +1,92 @@
+name: Build APK
+
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  APP_VERSION: "3.0.0"
+  PROJECT_DIR: YTDownloader
+  APK_NAME: YTDownloader-v3.0.0
+
+jobs:
+  build:
+    name: Build & Release APK v${{ env.APP_VERSION }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android platform & build-tools
+        run: |
+          yes | sdkmanager --licenses > /dev/null || true
+          sdkmanager "platforms;android-34" "build-tools;34.0.0" > /dev/null
+
+      - name: Set up Gradle 8.7
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.7"
+
+      - name: Build APK
+        working-directory: ${{ env.PROJECT_DIR }}
+        run: gradle assembleDebug --no-daemon --stacktrace
+
+      - name: Rename APK
+        run: cp "${{ env.PROJECT_DIR }}/app/build/outputs/apk/debug/app-debug.apk" "${{ env.APK_NAME }}.apk"
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.APK_NAME }}
+          path: ${{ env.APK_NAME }}.apk
+
+      - name: Upload to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ env.APP_VERSION }}
+          name: YT Downloader v${{ env.APP_VERSION }}
+          body: |
+            ## 📱 YT Downloader v${{ env.APP_VERSION }}
+
+            yt-dlp + FFmpeg ভিত্তিক YouTube & Facebook ভিডিও ডাউনলোডার অ্যাপ।
+
+            ### ✨ ফিচার
+            - 🎬 1080p / 720p / 480p / 360p / MP4 (best) ভিডিও আর 🎵 MP3 / 🎧 M4A অডিও ডাউনলোড
+            - 📥 Downloads ট্যাব: Active Queue (Pause / Resume / Retry / Cancel), progress, speed, ETA
+            - 🕘 Download History: search, play, share, delete, swipe-to-delete
+            - 🔗 Android Share মেনু থেকে সরাসরি ডাউনলোড (অ্যাপ খুলতে হয় না)
+            - 🍪 Facebook কুকি লগইন (private ভিডিও ডাউনলোড)
+            - ⚙️ Engine mode: Hybrid / Flask API / Native yt-dlp + FFmpeg
+            - 🎨 ৪টি থিম (System / Light / Dark / AMOLED Black)
+            - 🔄 অ্যাপের ভেতর থেকেই yt-dlp engine update
+
+            ### 📋 তথ্য
+            | | |
+            |---|---|
+            | **Package** | `com.example.ytdl` |
+            | **Version** | 3.0.0 (versionCode 4) |
+            | **Min Android** | 7.0 (API 24) |
+            | **Target** | Android 14 (API 34) |
+            | **ABI** | arm64-v8a |
+            | **Sign** | Debug signed (সরাসরি ইনস্টলযোগ্য) |
+
+            ### ℹ️ নোট
+            - Facebook/YouTube হঠাৎ কাজ না করলে অ্যাপের **Settings → Update yt-dlp Engine** চাপুন।
+            - "This video is only available for registered users" এলে **Settings → 🍪 Add / Manage Cookies** থেকে Facebook login করুন।
+
+            _Powered by 亗𝐷𝑒𝑣. 𝐻𝑎𝑠𝑖𝑏 𝐵𝑟𝑜亗_
+          files: ${{ env.APK_NAME }}.apk
+          prerelease: false
+          make_latest: true
