@@ -30,9 +30,15 @@ jobs:
       # আগে থেকেই ইনস্টল করা থাকে — ANDROID_HOME/ANDROID_SDK_ROOT সেট আছে।
       - name: Verify Android SDK
         run: |
-          echo "ANDROID_HOME=$ANDROID_HOME"
-          sdkmanager "platforms;android-34" "build-tools;34.0.0" > /dev/null
-          ls "$ANDROID_HOME/platforms" | grep android-34
+          SDK="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
+          echo "SDK root: $SDK"
+          ls "$SDK/platforms" || true
+          if ! ls "$SDK/platforms" | grep -q android-34; then
+            SM="$SDK/cmdline-tools/latest/bin/sdkmanager"
+            yes | "$SM" --licenses > /dev/null || true
+            "$SM" "platforms;android-34" "build-tools;34.0.0"
+          fi
+          ls "$SDK/platforms" | grep android-34
 
       - name: Set up Gradle 8.7
         uses: gradle/actions/setup-gradle@v4
