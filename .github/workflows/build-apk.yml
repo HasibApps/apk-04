@@ -47,7 +47,16 @@ jobs:
 
       - name: Build APK
         working-directory: ${{ env.PROJECT_DIR }}
-        run: gradle assembleDebug --no-daemon --stacktrace
+        run: |
+          gradle assembleDebug --no-daemon --stacktrace > build-output.log 2>&1
+          status=$?
+          if [ $status -ne 0 ]; then
+            grep -nE "FAILED|failed|error|Error|ERROR|Exception|Could not|What went wrong|^e: |Unresolved|not found" build-output.log \
+              | grep -vi "warning" | head -40 \
+              | sed 's/%/%25/g; s/\r/%0D/g' \
+              | while IFS= read -r line; do echo "::error::${line:0:650}"; done
+            exit $status
+          fi
 
       - name: Rename APK
         run: cp "${{ env.PROJECT_DIR }}/app/build/outputs/apk/debug/app-debug.apk" "${{ env.APK_NAME }}.apk"
